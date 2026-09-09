@@ -1,0 +1,107 @@
+[
+  {
+    "id": "task_01",
+    "title": "Employee CRUD API",
+    "request": "Build a REST API for employee management with FastAPI and SQLite. Endpoints: POST /employees, GET /employees, GET /employees/{id}, PUT /employees/{id}, DELETE /employees/{id}. Fields: name, email, role, department. Include Pydantic validation, pytest tests, and README.",
+    "difficulty": "medium",
+    "expected_files": ["app/main.py", "tests/test_main.py"]
+  },
+  {
+    "id": "task_02",
+    "title": "JWT Auth Layer",
+    "request": "Add JWT authentication to a FastAPI employee API. Endpoints: POST /auth/register, POST /auth/login (returns JWT), GET /me (protected). Use python-jose and passlib, hash passwords, include tests for auth flow.",
+    "difficulty": "hard",
+    "expected_files": ["app/auth.py"]
+  },
+  {
+    "id": "task_03",
+    "title": "FastAPI Hello World with Tests",
+    "request": "Create a minimal FastAPI service with GET / and GET /health, plus pytest tests that verify 200 status.",
+    "difficulty": "easy",
+    "expected_files": ["app/main.py"]
+  },
+  {
+    "id": "task_04",
+    "title": "Task Management API",
+    "request": "Build a task management REST API: Task has title, description, status (todo/doing/done), due_date. CRUD + filter by status. Add pagination (limit/offset) and tests.",
+    "difficulty": "medium",
+    "expected_files": ["app/main.py", "app/models.py"]
+  },
+  {
+    "id": "task_05",
+    "title": "Blog Posts API with Search",
+    "request": "Build a blog posts API with FastAPI: POST /posts, GET /posts?search=, GET /posts/{id}. Post has title, content, author, tags. Add search filter and pytest.",
+    "difficulty": "medium",
+    "expected_files": ["app/main.py"]
+  },
+  {
+    "id": "task_06",
+    "title": "Calculator Tool API",
+    "request": "Build a calculator API: POST /calculate with {expression: string} evaluates safely, GET /history returns past calculations. Store in SQLite, add validation and tests.",
+    "difficulty": "easy",
+    "expected_files": ["app/main.py"]
+  },
+  {
+    "id": "task_07",
+    "title": "User Registration with Validation",
+    "request": "Build user registration: POST /users with email validation, password strength check (8+ chars, upper, number), duplicate check. Use Pydantic validators and tests.",
+    "difficulty": "easy",
+    "expected_files": ["app/main.py"]
+  },
+  {
+    "id": "task_08",
+    "title": "Inventory CRUD with Stock Check",
+    "request": "Inventory API: item has name, sku, quantity, price. CRUD + POST /items/{id}/adjust {delta}. Prevent negative stock, add tests.",
+    "difficulty": "medium",
+    "expected_files": ["app/main.py"]
+  },
+  {
+    "id": "task_09",
+    "title": "Book Library API",
+    "request": "Book library: POST /books, GET /books?author=&genre=, GET /books/{id}, DELETE. Book has title, author, genre, year, isbn. Add filtering and tests.",
+    "difficulty": "medium",
+    "expected_files": ["app/main.py"]
+  },
+  {
+    "id": "task_10",
+    "title": "Notes API with Timestamps",
+    "request": "Notes API: create, list, get, update, delete notes. Each note has title, content, created_at, updated_at auto-managed. Add tests verifying timestamps.",
+    "difficulty": "easy",
+    "expected_files": ["app/main.py"]
+  },
+  {
+    "id": "task_11",
+    "title": "Contacts API with Pagination",
+    "request": "Contacts CRUD with pagination and search by name/email. Contact has name, email, phone, company. Add validation for email/phone and tests.",
+    "difficulty": "medium",
+    "expected_files": ["app/main.py"]
+  },
+  {
+    "id": "task_12",
+    "title": "Weather Mock API",
+    "request": "Mock weather API: GET /weather/{city} returns {city, temp, condition} from in-memory store, POST /weather to add city. Add caching header and tests.",
+    "difficulty": "easy",
+    "expected_files": ["app/main.py"]
+  },
+  {
+    "id": "task_13",
+    "title": "E-commerce Cart API",
+    "request": "Cart API: products CRUD + cart operations: POST /cart/add, POST /cart/remove, GET /cart, POST /cart/checkout (calculates total). Include tests for checkout.",
+    "difficulty": "hard",
+    "expected_files": ["app/main.py", "app/models.py"]
+  },
+  {
+    "id": "task_14",
+    "title": "URL Shortener",
+    "request": "URL shortener: POST /shorten {url} returns {short_code}, GET /{short_code} redirects (or returns url). Use 6-char codes, store mapping, add tests.",
+    "difficulty": "medium",
+    "expected_files": ["app/main.py"]
+  },
+  {
+    "id": "task_15",
+    "title": "Feedback API with Rating",
+    "request": "Feedback API: POST /feedback {user, rating 1-5, comment}, GET /feedback?min_rating=, GET /feedback/stats (avg rating). Add validation and tests.",
+    "difficulty": "easy",
+    "expected_files": ["app/main.py"]
+  }
+]

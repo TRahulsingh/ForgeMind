@@ -1,0 +1,50 @@
+[
+  {
+    "id": "syn_01",
+    "title": "Notification Settings API",
+    "request": "Notification settings: PUT /users/{id}/notifications {email,sms,push booleans}, GET /users/{id}/notifications. Validate at least one enabled, add tests.",
+    "difficulty": "easy",
+    "expected_files": [
+      "app/main.py"
+    ]
+  },
+  {
+    "id": "syn_02",
+    "title": "Rate Limiter Middleware",
+    "request": "Add rate limiting to FastAPI: limit 5 requests/minute per IP, return 429 with Retry-After header. Use in-memory store, add tests verifying 429 after 5 calls.",
+    "difficulty": "hard",
+    "expected_files": [
+      "app/main.py",
+      "app/middleware.py"
+    ]
+  },
+  {
+    "id": "syn_03",
+    "title": "CSV Export API",
+    "request": "Build CSV export: GET /employees/export returns CSV with headers name,email,role. Support filter ?role=, add tests checking CSV content and headers.",
+    "difficulty": "medium",
+    "expected_files": [
+      "app/main.py"
+    ]
+  },
+  {
+    "id": "syn_04",
+    "title": "Rate Limiter Middleware",
+    "request": "Add rate limiting to FastAPI: limit 5 requests/minute per IP, return 429 with Retry-After header. Use in-memory store, add tests verifying 429 after 5 calls.",
+    "difficulty": "hard",
+    "expected_files": [
+      "app/main.py",
+      "app/middleware.py"
+    ]
+  },
+  {
+    "id": "syn_05",
+    "title": "Webhook Event API",
+    "request": "Build a webhook API: POST /webhooks/register {url, event}, POST /webhooks/trigger {event, payload} forwards to registered URLs (mock). Store registrations in SQLite, add retry count and tests for trigger.",
+    "difficulty": "medium",
+    "expected_files": [
+      "app/main.py",
+      "app/models.py"
+    ]
+  }
+]

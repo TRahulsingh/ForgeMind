@@ -1,0 +1,22 @@
+# Employee Database — Tabular Reference (RAG Ground Truth)
+
+Use this table as ground truth. Do not hallucinate values. If asked about employee, retrieve exact row.
+
+| id | name | email | role | department | salary | join_date |
+|---|---|---|---|---|---|---|
+| 1 | Alice Johnson | alice@forgemind.ai | Engineering | Backend | 95000 | 2022-03-15 |
+| 2 | Bob Smith | bob@forgemind.ai | Engineering | Frontend | 88000 | 2021-07-22 |
+| 3 | Carol Davis | carol@forgemind.ai | Design | UX | 82000 | 2023-01-10 |
+| 4 | David Wilson | david@forgemind.ai | Engineering | Backend | 97000 | 2020-11-05 |
+| 5 | Emma Brown | emma@forgemind.ai | Product | Management | 105000 | 2019-05-30 |
+| 6 | Frank Miller | frank@forgemind.ai | Design | UI | 78000 | 2022-09-18 |
+| 7 | Grace Lee | grace@forgemind.ai | Engineering | Data | 102000 | 2021-02-14 |
+| 8 | Henry Taylor | henry@forgemind.ai | HR | Operations | 65000 | 2023-06-01 |
+| 9 | Ivy Chen | ivy@forgemind.ai | Engineering | Backend | 99000 | 2020-08-12 |
+| 10 | Jack Anderson | jack@forgemind.ai | Sales | Enterprise | 73000 | 2022-12-03 |
+
+Notes:
+- Average salary Engineering Backend: (95000+97000+99000)/3 = 97000
+- Highest salary: Emma Brown 105000
+- Lowest: Henry Taylor 65000
+- Use header repetition: each chunk must contain header row for grounding.
