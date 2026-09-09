@@ -302,8 +302,6 @@ ForgeMind/
 ├── .env.example                         # GOOGLE_API_KEY, GITHUB_TOKEN, DATABASE_PATH etc. (copy to .env)
 ├── .env                                 # your real key (gitignored) - empty for mock
 ├── requirements.txt                     # pinned low-RAM versions fastapi 0.110, langgraph 0.2.16, chromadb 0.5.3 etc.
-├── BUILD_PLAN.md                        # tailored low-spec roadmap M0-M5
-├── MASTER_PLAN.md                       # original enterprise blueprint 2570 lines (upgrade inspiration)
 └── output/                              # artifacts per task_id output/{id}/app/main.py etc. (gitignored, .gitkeep)
 ```
 
@@ -344,7 +342,7 @@ powershell -ExecutionPolicy Bypass -File run.ps1
 ### Prerequisites
 - **Python 3.11** (`python --version`), **Node 18+** (`node --version` 22.11.0 verified), **Git**
 - **GOOGLE_API_KEY** from [Google AI Studio](https://aistudio.google.com) (optional, mock works without it, same orchestration)
-- **Windows/Linux/macOS**, **6GB RAM** (no Docker for 1.0, `Vite` 400MB vs `Next.js` 1GB), **No venv needed** (you chose global `C:\Program Files\Python311`), `pip 25.1.1`
+- **Windows/Linux/macOS**, **6GB RAM** (no Docker for 1.0, `Vite` 400MB vs `Next.js` 1GB), **No venv needed** (global `C:\Program Files\Python311`), `pip 25.1.1`
 
 ### Install — Step by Step
 
@@ -353,7 +351,7 @@ powershell -ExecutionPolicy Bypass -File run.ps1
 git clone https://github.com/TRahulsingh/ForgeMind.git
 cd forgemind   # crew
 
-# 1. Env (global as you chose, no venv)
+# 1. Env (global, no venv)
 pip install -r requirements.txt
 # pinned: fastapi==0.110.0 uvicorn==0.29.0 pydantic==2.6.4 langgraph==0.2.16 chromadb==0.5.3 sentence-transformers==3.0.1 etc. (see pip list global)
 copy .env.example .env
@@ -525,8 +523,8 @@ Current file `SQLite`/`Chroma` proves orchestration on 6GB. When data or require
 | **Vector / RAG** — `Chroma` file `chroma_db/fallback.json` `rag/ingestion.py:244` `PersistentClient(path)` + `MiniLM` 80MB + hash `384d` `rag/embeddings.py:27`, 7 chunks (5 text, 2 table), `retrieve_context k=5` `rag/retrieval.py:4` keyword `fallback.json` when `chromadb` missing, `get_retrieval_stats` `rag/retrieval.py:57` | When your docs grow beyond keyword: **`<100 docs`** fallback keyword `sum(1 for w in qwords if w in doc)` `retrieval.py:40` is fast `~20ms`, accurate for exact matches → **`100-1k docs`** hash collisions rise, need real `all-MiniLM-L6-v2` batched `model.encode(texts,batch_size=32)` for semantic recall → **`>10k docs`** lexical scan `>200ms` vs `~30ms` vector + `metadata filter` `WHERE is_table=true` fails | **Recipe:** `pip install pgvector psycopg2` set `CHROMA_PATH=postgres://` in `.env` `backend/core/config.py:11` `model_config env_file=.env` and change `rag/ingestion.py:35` collection to `pgvector`. Keep `CHUNK_SIZE 500/50 + TABLE_ROWS_PER_CHUNK 20` header-repeat and `retrieve_context k=5` API identical. *Why:* Upgrades lexical → semantic + enables filters without rewriting `graph/`. Measure `retrieval recall@5` on `employees.csv` before/after. |
 | **Data / State** — `SQLite` file `./app.db` `backend/core/database.py:9` `PRAGMA journal_mode=WAL` `timeout=10` `check_same_thread=False`, tables `tasks(id,request,status,state_json)` `ON CONFLICT UPDATE` `database.py:21` + `checkpoints`, handles `15-task benchmark 4.2s` sequential `evaluation/evaluator.py:60` | When concurrent users grow: **`1 user` sequential `15 tasks`** fine → **`5-10 concurrent`** `database is locked` warnings, WAL contention → **`20+ concurrent`** need transient state separation (sessions, workflow checkpoints) that SQLite file cannot provide, `queues{}` `backend/api/tasks.py:18` lost on restart | **Recipe:** Set `DATABASE_PATH=postgres://` + add `REDIS_URL` in `backend/core/config.py:11`. Move `tasks` to Postgres `asyncpg` + `sqlalchemy` pool and `LangGraph SqliteSaver`/`RedisSaver` `graph/workflow.py:128` `interrupt_before human_approval` for durable HITL resume (not just DB row `backend/api/tasks.py:59` snapshot). *Why:* Separates durable `tasks/approvals` from transient `workflow state` and enables horizontal replicas. |
 | **Infra** — Global env, no venv, no Docker, `uvicorn backend.main:app --reload` `run.ps1`, `Vite` 400MB `docs/decisions.md:6` vs `Next.js` 1GB, `pip install -r requirements.txt:1` `fastapi==0.110.0` pinned | When you need to deploy or isolate: **`6GB` laptop** cannot run Docker Desktop (needs 2GB) → **`>8GB` or need cloud deploy** `Render/Railway/GKE` requires container portability → **`multi-replica`** needs orchestration `load balancer` | **Recipe:** `FROM python:3.11-slim WORKDIR /app COPY requirements.txt . RUN pip install --no-cache-dir -r requirements.txt COPY . . CMD ["uvicorn","backend.main:app","--host","0.0.0.0","--port","8000"]` + `docker-compose.yml` `api: build: . ports: ["8000:8000"] env_file: .env volumes: ["./output:/app/output"]` `frontend: build: ./frontend ports: ["5173:5173"]`. Same `output/{id}` mount, same `SQLite` file or `postgres://` swap. *Why:* Validates file mode first, then containerizes without code change — the forge keeps `graph/`. |
-| **Agents** — 5 `graph/nodes.py:40` `planner/researcher/developer/tester/reviewer` `loader.py:17` `@lru_cache` `tier: pro/flash` `temperature: 0.2/0.3/0.1` front-matter `agents/prompts/*.md:1` | When complexity grows: **`5 agents`** enough for demo `MASTER_PLAN 5` → **need deeper verification** when generated files violate `>300 lines` rule `developer.md:1` or security findings missed, `>10 agents` `MASTER_PLAN:511` only if justified | **Recipe:** Add `agents/prompts/architect.md` `security.md` `docs.md` (front-matter `id: architect, tier: pro, temp: 0.2`) + `graph.add_node("architect", architect_node)` + 2 edges `graph/workflow.py:83` `researcher -> architect -> developer` + `developer -> tester`. Tier via front-matter auto-routes to `gemini-pro-latest` `backend/core/llm.py:21` with no change in `llm.py`. *Why:* Deeper `system design, SAST, docs` without touching core, prompt PR without code PR. |
-| **Observability** — `LangSmith` cloud `0 RAM` `langsmith==0.1.83` `LANGCHAIN_TRACING_V2` `.env.example:4` `GET /api/evaluation/results` `frontend/src/App.jsx:178` Benchmark table | When benchmarking beyond demo: **`15 tasks`** `task_completion/test_pass/approval_rate/avg_latency` `evaluation/metrics.py:1` → **`>20 tasks`** need per-agent `latency/tokens/cost/retries` `MASTER_PLAN:997` to optimize routing `TASK_ROUTING` `backend/core/llm.py:12` | **Recipe:** Add `OpenTelemetry` middleware `backend/main.py:17` + `Prometheus/Grafana` dashboards `latency/tokens/cost/retries/test_pass` per `planner/researcher/...` + extend `evaluation/metrics.py:1` to `evaluation/results.json:1` `per-agent`. *Why:* Turns AI app into engineered system with measurable version deltas `MASTER_PLAN:999`. |
+| **Agents** — 5 `graph/nodes.py:40` `planner/researcher/developer/tester/reviewer` `loader.py:17` `@lru_cache` `tier: pro/flash` `temperature: 0.2/0.3/0.1` front-matter `agents/prompts/*.md:1` | When complexity grows: **`5 agents`** enough for demo `original blueprint` → **need deeper verification** when generated files violate `>300 lines` rule `developer.md:1` or security findings missed, `>10 agents` only if justified | **Recipe:** Add `agents/prompts/architect.md` `security.md` `docs.md` (front-matter `id: architect, tier: pro, temp: 0.2`) + `graph.add_node("architect", architect_node)` + 2 edges `graph/workflow.py:83` `researcher -> architect -> developer` + `developer -> tester`. Tier via front-matter auto-routes to `gemini-pro-latest` `backend/core/llm.py:21` with no change in `llm.py`. *Why:* Deeper `system design, SAST, docs` without touching core, prompt PR without code PR. |
+| **Observability** — `LangSmith` cloud `0 RAM` `langsmith==0.1.83` `LANGCHAIN_TRACING_V2` `.env.example:4` `GET /api/evaluation/results` `frontend/src/App.jsx:178` Benchmark table | When benchmarking beyond demo: **`15 tasks`** `task_completion/test_pass/approval_rate/avg_latency` `evaluation/metrics.py:1` → **`>20 tasks`** need per-agent `latency/tokens/cost/retries` to optimize routing `TASK_ROUTING` `backend/core/llm.py:12` | **Recipe:** Add `OpenTelemetry` middleware `backend/main.py:17` + `Prometheus/Grafana` dashboards `latency/tokens/cost/retries/test_pass` per `planner/researcher/...` + extend `evaluation/metrics.py:1` to `evaluation/results.json:1` `per-agent`. *Why:* Turns AI app into engineered system with measurable version deltas `original blueprint`. |
 
 **Upgraded view recruiter will check `docs/upgrade.md`:** flowchart `User→Next.js(Shadcn)→FastAPI(Auth/RBAC)→LangGraph(SqliteSaver/Redis, parallel)→8 agents→pgvector/Postgres→MCP(Files/Docker/Slack/Jira)→OTEL→Grafana` and tech stack `Vite→Next.js, SQLite file→Postgres+Redis, Chroma file→pgvector, global→Docker→K8s, 5→8 agents` — detailed so you can pick points that match your generated metrics.
 
@@ -562,13 +560,13 @@ Full matrix and `One env-var + One file` recipes in `upgrade.md` (the upgrade-ty
 - **Security:** [`docs/security.md`](./docs/security.md) — traversal `tools/filesystem.py:26` `commonpath`, HITL gate `graph/nodes.py:159` before `github`, quotas `50/2M` + `30s` timeout, allowlist `backend/api/evaluation.py:50`, Pydantic, env secrets.
 - **Evaluation:** [`docs/evaluation.md`](./docs/evaluation.md) — benchmark pipeline mermaid `Task Success→Final Score`, dataset 15 breakdown, metrics `task_completion/test_pass/approval/latency` `evaluator.py:72`, repro `rag.ingestion && evaluator 15 && pytest -q`.
 - **Prompts:** [`agents/prompts/README.md`](./agents/prompts/README.md) — versioning patch/minor/major, `loader.py:17` `@lru_cache` 5, safe `render_prompt` braces.
-- **Master blueprint:** [`MASTER_PLAN.md`](./MASTER_PLAN.md) 2570 lines — original enterprise target that `BUILD_PLAN.md:1` tailored to 6GB MVP (M0-M5).
+- **Master blueprint:** distilled into [`docs/upgrade.md`](./docs/upgrade.md) — original enterprise draft archived privately, tailored to 6GB MVP.
 
 ---
 
 ## ⚠️ Important Notes
 
-- **Windows global env** as you chose (no `venv`), `pip install -r requirements.txt` goes to `C:\Program Files\Python311` `pip 25.1.1` — `output/` `.gitkeep` ignored, `app.db` `chroma_db/` `fallback.json` `frontend/node_modules/` `frontend/dist/` ignored ` .gitignore:1` `__pycache__/`
+- **Windows global env** (no `venv`), `pip install -r requirements.txt` goes to `C:\Program Files\Python311` `pip 25.1.1` — `output/` `.gitkeep` ignored, `app.db` `chroma_db/` `fallback.json` `frontend/node_modules/` `frontend/dist/` ignored ` .gitignore:1` `__pycache__/`
 - **6GB no Docker** — `Vite` 400MB vs `Next.js` 1GB `docs/decisions.md:6`, `Chroma` file + hash `384d` fallback proves orchestration; Docker recipe `FROM python:3.11-slim` `docs/upgrade.md` when >8GB; `output/{id}` mount stays same
 - **Free tier 5 RPM** `gemini-flash-latest`/`pro-latest` `backend/core/llm.py:21` `MODEL_MAP` `pro/flash->latest` → 1 task/min real, mock `4.2s` for 15-task benchmark speed; wait `20s` between real tasks or upgrade billing; `FutureWarning genai deprecated` still works `gemini-flash-latest OK` `list_models` verified
 - **Mock fallback** `backend/core/llm.py:95` deterministic `planner 3 tasks, tester passed 3/3, reviewer APPROVED 8` `graph/nodes.py:48` `render_prompt` safe — same orchestration, zero cost, `GET /health` `mock_mode` `backend/main.py:28` `is_mock()` checks placeholder `your_gemini_api_key_here`
@@ -582,11 +580,13 @@ Full matrix and `One env-var + One file` recipes in `upgrade.md` (the upgrade-ty
 
 ## 📜 License
 
-MIT — build your own Forge. Inspired by Enterprise Autonomous AI Operations Platform, refined for showcase `MASTER_PLAN:1` 2570 lines.
+MIT — build your own Forge. ForgeMind is original work, built from first principles for AI engineering — stateful orchestration, grounded retrieval and measured execution.
 
-**Guidance for your resume (not copied, build from data):** Use the detailed scaling table `Scaling ForgeMind` above, `graph/workflow.py:83` orchestration `StateGraph conditional retry`, `rag/ingestion.py:46` table-aware grounding with header repetition, `tools/python_exec.py:30` real pytest execution, `evaluation/results.json:1` `15 tasks 4.2s mock` + `60-80% real` `frontend/src/App.jsx:178` Benchmark tab and `docs/upgrade.md` thresholds (`<100 docs` → `>10k pgvector`, `1 user` → `20 concurrent` `Postgres+Redis`) to craft 2-3 bullets in your voice: one on orchestration/state (`LangGraph`), one on RAG/tools/HITL grounding (`500/50 + 20 rows`, `50 files/2M`, `HITL`), one on measurement/scaling via env swap (`one env-var + one file`, `backend/core/config.py:11`). Keep the pattern *“Built X to do Y using Z, measured by M, scales via N”* and fill with your generated numbers `python -m evaluation.evaluator 15`.
+**For readers building your own story:** The sections above give you the data to describe ForgeMind in your own voice. Look at `How It Works` (the 7-step flow), `Evaluation` (15 tasks, `4.2s` mock benchmark you can reproduce), and `Scaling` (file → server via one env-var). Pick the 2–3 points that match your generated numbers and describe what ForgeMind does for a user, not the build process itself. Readers care how ForgeMind plans, grounds with tables, executes tests and waits for approval — that story is in `docs/architecture.md` and `docs/upgrade.md`.
 
-For phrasing inspiration, `docs/decisions.md:1` `docs/upgrade.md:1` + `graph/state.py:8` shared state give you the *why* behind each `Tech Stack` row.
+For deeper context on the *why* behind each choice, see `docs/decisions.md` and `graph/state.py:8` shared state.
+
+> **Example phrasing for inspiration (adapt, don’t copy):** *“ForgeMind orchestrates five agents via LangGraph to turn a task into researched, tested and reviewed code, with table-aware RAG and human-in-the-loop approval, measured across a 15-task benchmark.”* Fill `X → Y using Z, measured by M` with your `python -m evaluation.evaluator 15` results.
 
 ---
 
