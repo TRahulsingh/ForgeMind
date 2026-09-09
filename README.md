@@ -470,7 +470,7 @@ python -c "from rag.retrieval import retrieve_context, get_retrieval_stats; prin
 # -> 7 chunks (5 text,2 table) + [Source: employees.csv [Table | Columns: id, name, email, role, salary...]] + 95000
 ```
 
-**CI ` .github/workflows/ci.yml:1`:** `ubuntu-latest` `python 3.11` `pip install -r requirements.txt` `pytest -q` — no Docker.
+**CI ` .github/workflows/ci.yml.example:1` (template, not auto-run):** `ubuntu-latest` `python 3.11` `pip install -r requirements.txt` `pytest -q` — no Docker. Copy to `ci.yml` to enable `on: [push]` (currently renamed to `.example` so your push stays silent, others can `cp ci.yml.example ci.yml`). Dependency fixed `google-generativeai 0.5.4→0.7.2` + `langchain-core 0.2.11→0.2.33` for `langchain-google-genai 1.0.10` `ResolutionImpossible` you saw.
 
 ---
 
