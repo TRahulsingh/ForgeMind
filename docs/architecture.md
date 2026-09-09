@@ -120,16 +120,17 @@ ForgeMind’s best one-cmd checks before downloading — if all pass it goes, if
 powershell -ExecutionPolicy Bypass -File run.ps1
 # Or double-click run.bat
 
-# What run.ps1 does (check-before-download):
-# 1) Env: if Test-Path .env else Copy-Item .env.example .env + warn if placeholder still
-# 2) Python deps: python -c importlib.metadata check pinned requirements.txt 19 deps -> if OK skip pip, else pip install (~30s)
+# What run.ps1 does (check-before-download, never downgrades):
+# 1) Env: if Test-Path .env else Copy-Item .env.example .env + warn if placeholder still (always)
+# 2) Python deps: python tools/check_pydeps.py --gte (Version < required only) -> if OK skip pip, else pip install --no-deps <missing> (never uninstall/downgrade)
 # 3) Node deps: Test-Path frontend/node_modules/react -> if OK skip npm, else npm ci --prefer-offline
 # 4) RAG: Test-Path chroma_db/fallback.json + chunks>0 + newer than docs_seed -> if OK skip, else python -m rag.ingestion (7 chunks)
 # 5) Backend: try Invoke-RestMethod http://localhost:8000/health -> if running skip, else Start-Process uvicorn + poll 15x2s + open http://localhost:8000/docs
 # 6) Frontend: try Invoke-WebRequest http://localhost:5173 -> if running skip, else npm run dev + open http://localhost:5173
+# Flags: -NoBrowser, -NoInstall (runner only: skip 2-4, just Env + backend/frontend) e.g. run.ps1 -NoInstall
 ```
 
-> Then open `http://localhost:5173` Workflow tab (Benchmark tab for RAG upload).
+> Then open `http://localhost:5173` Workflow tab (Benchmark tab for RAG upload). `run.ps1 -NoInstall` is runner-only for manual installs.
 
 ### Option B — Manual Step-by-Step (Alternative, 2 Terminals) — For Control
 

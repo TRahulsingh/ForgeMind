@@ -1,41 +1,32 @@
-param([switch]$NoBrowser)
+param([switch]$NoBrowser,[switch]$NoInstall)
 $ErrorActionPreference = "Continue"
-Write-Host "=== ForgeMind — One-Cmd Starter (idempotent, check-before-download) ===" -ForegroundColor Cyan
+Write-Host "=== ForgeMind -- One-Cmd Starter (idempotent, check-before-download) ===" -ForegroundColor Cyan
+if ($NoInstall) { Write-Host "NoInstall: skip deps/RAG install checks, runner only" -ForegroundColor Yellow }
 
 function Test-PyDeps {
-  # Check pinned versions from requirements.txt via importlib.metadata (no network, <100ms)
-  $code = @"
-import importlib.metadata, pathlib, sys
-reqs = [l.strip() for l in pathlib.Path('requirements.txt').read_text().splitlines() if '==' in l and not l.strip().startswith('#')]
-miss = []
-for r in reqs:
-  try:
-    name = r.split('==')[0].split('[')[0].strip()
-    ver = r.split('==')[1].strip()
-    if importlib.metadata.version(name) != ver:
-      miss.append(f"{name} {importlib.metadata.version(name)} != {ver}")
-  except Exception as e:
-    miss.append(r)
-sys.exit(0 if not miss else 1)
-"@
-  python -c $code 2>$null
+  python tools/check_pydeps.py --gte 2>$null
   return $LASTEXITCODE -eq 0
 }
 
 function Ensure-Env {
   if (-not (Test-Path ".env")) { Copy-Item ".env.example" ".env"; Write-Host ".env created from .env.example" -ForegroundColor Green }
-  else { Write-Host ".env OK — skip copy" -ForegroundColor Green }
-  if ((Get-Content ".env" -Raw -ErrorAction SilentlyContinue) -match "your_gemini_api_key_here") { Write-Host "WARN: .env still placeholder -> mock mode (add GOOGLE_API_KEY for real Gemini)" -ForegroundColor Yellow }
+  else { Write-Host ".env OK -- skip copy" -ForegroundColor Green }
+  try { if ((Get-Content ".env" -Raw -ErrorAction SilentlyContinue) -match "your_gemini_api_key_here") { Write-Host "WARN: .env still placeholder -> mock mode (add GOOGLE_API_KEY for real Gemini)" -ForegroundColor Yellow } } catch {}
 }
 
 function Ensure-PyDeps {
-  if (Test-PyDeps) { Write-Host "Python deps OK (pinned from requirements.txt) — skip pip" -ForegroundColor Green; return }
-  Write-Host "Python deps missing/mismatch -> pip install -r requirements.txt (may take 30s)..." -ForegroundColor Yellow
-  pip install -r requirements.txt
+  if (Test-PyDeps) { Write-Host "Python deps OK (check: installed >= required) -- skip pip" -ForegroundColor Green; return }
+  $missing = python tools/check_pydeps.py --gte --list-missing 2>$null
+  if (-not $missing) { Write-Host "Python deps check passed -- skip pip" -ForegroundColor Green; return }
+  Write-Host "Python deps missing (need < required) -> installing only missing, not downgrading existing..." -ForegroundColor Yellow
+  Write-Host "Missing: $missing"
+  foreach ($pkg in $missing) {
+    if ($pkg) { pip install --no-deps $pkg 2>&1 | Select-Object -Last 2 }
+  }
 }
 
 function Ensure-NodeDeps {
-  if ((Test-Path "frontend/node_modules/react") -and (Test-Path "frontend/package-lock.json")) { Write-Host "frontend/node_modules OK — skip npm" -ForegroundColor Green; return }
+  if ((Test-Path "frontend/node_modules/react") -and (Test-Path "frontend/package-lock.json")) { Write-Host "frontend/node_modules OK -- skip npm" -ForegroundColor Green; return }
   Write-Host "frontend deps missing -> npm ci (prefer-offline)..." -ForegroundColor Yellow
   Push-Location frontend
   npm ci --prefer-offline
@@ -59,7 +50,7 @@ function Ensure-RAG {
     Write-Host "RAG ingest -> python -m rag.ingestion (table-aware 7 chunks)..." -ForegroundColor Yellow
     python -m rag.ingestion
   } else {
-    Write-Host "RAG fallback.json OK (7 chunks: 5 text, 2 table) — skip ingest" -ForegroundColor Green
+    Write-Host "RAG fallback.json OK (7 chunks: 5 text, 2 table) -- skip ingest" -ForegroundColor Green
     try { python -c "from rag.retrieval import get_retrieval_stats; print(get_retrieval_stats())" } catch {}
   }
   [void](New-Item -ItemType Directory -Path "output","chroma_db" -Force -ErrorAction SilentlyContinue)
@@ -69,17 +60,21 @@ function Test-PortFree($port) {
   try { $c = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue; return -not $c } catch { return $true }
 }
 
-# 1. Env
+# 1. Env (always)
 Ensure-Env
-# 2. Deps (idempotent)
-Ensure-PyDeps
-Ensure-NodeDeps
-# 3. RAG (idempotent)
-Ensure-RAG
+# 2. Deps/RAG (idempotent, skip if -NoInstall)
+if (-not $NoInstall) {
+  Ensure-PyDeps
+  Ensure-NodeDeps
+  Ensure-RAG
+} else {
+  Write-Host "Skipping Python/Node/RAG checks due to -NoInstall (runner only)" -ForegroundColor Yellow
+  [void](New-Item -ItemType Directory -Path "output","chroma_db" -Force -ErrorAction SilentlyContinue)
+}
 
 # 4. Backend
 $backendRunning = $false
-try { $h = Invoke-RestMethod http://localhost:8000/health -TimeoutSec 2 -ErrorAction Stop; Write-Host "Backend already running ($($h.status) mock=$($h.mock_mode)) — skip uvicorn" -ForegroundColor Green; $backendRunning = $true } catch {}
+try { $h = Invoke-RestMethod http://localhost:8000/health -TimeoutSec 2 -ErrorAction Stop; Write-Host "Backend already running ($($h.status) mock=$($h.mock_mode)) -- skip uvicorn" -ForegroundColor Green; $backendRunning = $true } catch {}
 if (-not $backendRunning) {
   if (-not (Test-PortFree 8000)) { Write-Host "Port 8000 busy - is backend already running? Continuing..." -ForegroundColor Yellow }
   else {
@@ -97,7 +92,7 @@ if (-not $backendRunning) {
 
 # 5. Frontend
 $frontendRunning = $false
-try { $r = Invoke-WebRequest http://localhost:5173 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; $frontendRunning = $true; Write-Host "Frontend already running on :5173 — skip vite" -ForegroundColor Green } catch {}
+try { $r = Invoke-WebRequest http://localhost:5173 -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop; $frontendRunning = $true; Write-Host "Frontend already running on :5173 -- skip vite" -ForegroundColor Green } catch {}
 if (-not $frontendRunning) {
   if (-not (Test-PortFree 5173)) { Write-Host "Port 5173 busy - frontend may already run on 5174 (Vite auto-bump)" -ForegroundColor Yellow }
   Write-Host "Starting frontend on http://localhost:5173 ..." -ForegroundColor Cyan
@@ -112,7 +107,6 @@ if (-not $frontendRunning) {
   if (-not $NoBrowser) { try { Start-Process "http://localhost:5173" } catch {} }
   Write-Host "Frontend running, opening browser..." -ForegroundColor Green
   if (-not $NoBrowser) { Start-Process "http://localhost:5173" }
-  # Keep shell alive for logs
   Write-Host "Both services running. Press Ctrl+C to stop (backend runs in separate window, close it manually)." -ForegroundColor Cyan
   while ($true) { Start-Sleep 60 }
 }

@@ -29,3 +29,4 @@ langsmith==0.1.83
 pytest==8.2.2
 pytest-asyncio==0.23.7
 httpx==0.27.0
+packaging==24.2

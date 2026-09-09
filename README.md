@@ -320,17 +320,18 @@ ForgeMind’s best one-cmd checks before downloading — if all pass it goes, if
 powershell -ExecutionPolicy Bypass -File run.ps1
 # Or double-click run.bat (bypasses ExecutionPolicy for you)
 
-# What run.ps1 does (idempotent, check-before-download):
-# 1) Env: if Test-Path .env else Copy-Item .env.example .env (.env.example:1) + warn if placeholder still
-# 2) Python deps: python -c importlib.metadata check pinned requirements.txt:1 19 deps (fastapi==0.110.0 etc.) -> if OK skip pip, else pip install -r requirements.txt (~30s, <100ms check vs 19x pip show)
+# What run.ps1 does (idempotent, check-before-download, never downgrades):
+# 1) Env: if Test-Path .env else Copy-Item .env.example .env (.env.example:1) + warn if placeholder still (always)
+# 2) Python deps: python tools/check_pydeps.py --gte (Version(installed) < Version(required) only) -> if OK skip pip, else pip install --no-deps <missing> (never pip uninstall/downgrade, per-missing only)
 # 3) Node deps: Test-Path frontend/node_modules/react + package-lock.json -> if OK skip npm, else npm ci --prefer-offline in frontend/
 # 4) RAG: Test-Path chroma_db/fallback.json + ingest_stats.json + chunks>0 + fallback newer than docs_seed -> if OK skip, else python -m rag.ingestion (table-aware 7 chunks: 5 text, 2 table header-repeat 20 rows)
 # 5) Backend: try Invoke-RestMethod http://localhost:8000/health (backend/main.py:30) -> if running skip uvicorn, else Start-Process powershell uvicorn backend.main:app --reload --port 8000 + poll health 15x2s + open http://localhost:8000/docs
 # 6) Frontend: try Invoke-WebRequest http://localhost:5173 -> if running skip, else Start-Process npm run dev + open http://localhost:5173
 # 7) Logs: shows http://localhost:5173 Workflow tab + Benchmark tab
+# Flags: -NoBrowser (no browser open), -NoInstall (runner only: skip 2-4, just Env + backend/frontend, for manual installs) e.g. run.ps1 -NoInstall -NoBrowser
 ```
 
-> Then open `http://localhost:5173` Workflow tab. `run.bat` does same for double-click.
+> Then open `http://localhost:5173` Workflow tab. `run.bat` does same for double-click (`run.bat:3` forwards `%*` so `run.bat -NoInstall` works). Default `run.ps1` is showcase one-cmd (check else download, never deleting); `run.ps1 -NoInstall` is runner-only for daily dev.
 
 ### Option B — Manual Step-by-Step (Alternative, 2 Terminals) — For Control & Debugging
 
