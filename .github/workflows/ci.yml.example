@@ -1,3 +1,5 @@
+# Copy to ci.yml to enable CI — template preserved, not run as .example
+# See README.md Testing and docs/upgrade.md for when to enable
 name: CI
 on: [push, pull_request]
 jobs:
